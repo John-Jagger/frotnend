@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react"
-import { MapContainer, TileLayer, ZoomControl, Polyline, CircleMarker, Marker, Popup } from "react-leaflet"
-import "leaflet/dist/leaflet.css"
-import "./App.css"
-import L from "leaflet"
+import { useEffect, useState } from "react";
+import { MapContainer, TileLayer, ZoomControl, Polyline, CircleMarker, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import "./App.css";
+import L from "leaflet";
 
 const waypoints = [
   [39.75123, -105.222302],
@@ -13,28 +13,51 @@ const waypoints = [
   [39.741498, -105.223882],
   [39.740863, -105.222378],
   [39.75123, -105.222302], // Volvemos al inicio
-]
+];
 
-// Definir un icono personalizado para el cart.svg
+// Icono personalizado para el cart.svg
 const cartIcon = new L.Icon({
   iconUrl: "/cart.svg",
-  iconSize: [30, 30], // Tamaño del icono
-  iconAnchor: [15, 15], // Centro del icono
-  className: "cart-icon", // Clase CSS para aplicar filtro
-})
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+  className: "cart-icon",
+});
+
+// Icono para las paradas
+const stopIcon = new L.Icon({
+  iconUrl: "/bus.svg", // Usa una imagen de parada
+  iconSize: [25, 25],
+  iconAnchor: [12, 25],
+  popupAnchor: [0, -25],
+});
 
 export default function App() {
   const [route, setRoute] = useState([]);
   const [times, setTimes] = useState([]);
+  const [cartPosition, setCartPosition] = useState([39.748611, -105.219873]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     fetch("/route.json")
       .then((res) => res.json())
       .then((data) => setRoute(data.route));
 
-    // Generar tiempos aleatorios para cada waypoint
     setTimes(waypoints.map(() => Math.floor(Math.random() * 10) + 1));
   }, []);
+
+  useEffect(() => {
+    if (route.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prevIndex) => {
+          const nextIndex = (prevIndex + 1) % route.length;
+          setCartPosition(route[nextIndex]);
+          return nextIndex;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [route]);
 
   return (
     <>
@@ -53,32 +76,27 @@ export default function App() {
         <ZoomControl position="bottomright" />
 
         {route.length > 0 && (
-          <Polyline 
-            positions={route} 
-            color="#C0C0C0" 
-            weight={5} 
-            interactive={false}
-          />
+          <Polyline positions={route} color="#C0C0C0" weight={5} interactive={false} />
         )}
 
         {waypoints.map((point, index) => (
-          <CircleMarker
-            key={index}
-            center={point}
-            radius={7}
-            fillColor="#C0C0C0"
-            // casi transparente
-            color= "#f8f9fa08"
-            weight={15}
-            fillOpacity={1}
-          >
-            <Popup>Silver - {times[index]} mins</Popup>
-          </CircleMarker>
+          <div key={index}>
+            <CircleMarker
+              center={point}
+              radius={7}
+              fillColor="#C0C0C0"
+              color="#f8f9fa08"
+              weight={15}
+              fillOpacity={1}
+            />
+            <Marker position={point} icon={stopIcon}>
+              <Popup>Silver - {times[index]} mins</Popup>
+            </Marker>
+          </div>
         ))}
 
-        <Marker position={[39.748611, -105.219873]} icon={cartIcon} />
+        <Marker position={cartPosition} icon={cartIcon} />
       </MapContainer>
     </>
-  )
+  );
 }
-
