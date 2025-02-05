@@ -1,0 +1,24 @@
+html, body, #root, .map {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+.map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.leaflet-container {
+  background: #f8f9fa;
+}
+
+/* Ajuste de color para cart.svg */
+.cart-icon {
+  filter: invert(75%) sepia(6%) saturate(190%) hue-rotate(180deg) brightness(70%);
+}
