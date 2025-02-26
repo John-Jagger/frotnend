@@ -34,7 +34,7 @@ const stopIcon = new L.Icon({
 export default function App() {
   const [route, setRoute] = useState([]);
   const [times, setTimes] = useState([]);
-  const [cartPosition, setCartPosition] = useState([39.748611, -105.219873]);
+  const [cartPosition, setCartPosition] = useState([0, 0]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -46,18 +46,29 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (route.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentIndex((prevIndex) => {
-          const nextIndex = (prevIndex + 1) % route.length;
-          setCartPosition(route[nextIndex]);
-          return nextIndex;
-        });
-      }, 1000);
+    // Función para obtener la localización del dispositivo
+    const getLocation = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setCartPosition([latitude, longitude]);
+        },
+        (error) => {
+          console.error("Error obteniendo la localización:", error);
+        }
+      );
+    };
 
-      return () => clearInterval(interval);
-    }
-  }, [route]);
+    // Actualizamos la posición cada 15 segundos
+    const interval = setInterval(() => {
+      getLocation();
+    }, 1000); // 15000 ms = 15 segundos
+
+    // Ejecutar una vez al inicio para obtener la localización inmediatamente
+    getLocation();
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
