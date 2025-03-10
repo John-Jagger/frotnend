@@ -46,7 +46,7 @@ export default function App() {
 
   // WebSocket connection
   useEffect(() => {
-    const ws = new WebSocket("https://testbackend-3gou.onrender.com/");
+    const ws = new WebSocket("https://testbackend-3gou.onrender.com/api/");
     
     ws.onopen = () => {
       console.log("WebSocket conectado");
@@ -125,7 +125,7 @@ export default function App() {
 
   // Fetch initial route data
   useEffect(() => {
-    fetch("https://testbackend-3gou.onrender.com/")
+    fetch("https://testbackend-3gou.onrender.com/api/")
       .then((res) => res.json())
       .then((data) => setRoute(data.route || []))
       .catch(console.error);
