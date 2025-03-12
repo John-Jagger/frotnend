@@ -44,6 +44,33 @@ export default function App() {
   const watchIdRef = useRef(null);
   const intervalRef = useRef(null);
 
+  const startLocationSharing = () => {
+    if (navigator.geolocation) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          setPosition([latitude, longitude]);
+
+          if (socketRef.current?.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({
+              latitude,
+              longitude,
+              mode: "driver"
+            }));
+          }
+        },
+        (error) => console.error(" Error in geolocation:", error),
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000
+        }
+      );
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+    }
+  };
+
   // WebSocket connection
   useEffect(() => {
     const ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
