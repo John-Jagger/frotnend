@@ -125,7 +125,7 @@ export default function App() {
 
   // Fetch initial route data
   useEffect(() => {
-    fetch("wss://tracker-backendgun.onrender.com/ws/location/")
+    fetch("/route.json")
       .then((res) => res.json())
       .then((data) => setRoute(data.route || []))
       .catch(console.error);
