@@ -46,7 +46,7 @@ export default function App() {
 
   // WebSocket connection
   useEffect(() => {
-    const ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
+    const ws = new WebSocket("wss://tracker-backendgun.onrender.com/api/location/");
     
     ws.onopen = () => {
       console.log("WebSocket conectado");
