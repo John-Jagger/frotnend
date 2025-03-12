@@ -123,7 +123,7 @@ export default function App() {
     };
   }, [mode]);
 
-  // Fetch initial route data
+  // Fetch initial route dat
   useEffect(() => {
     fetch("wss://tracker-backendgun.onrender.com/ws/location/")
       .then((res) => res.json())
