@@ -46,7 +46,7 @@ export default function App() {
 
   // WebSocket connection
   useEffect(() => {
-    const ws = new WebSocket("https://tracker-backendgun.onrender.com/api/location/");
+    const ws = new WebSocket("ws://tracker-backendgun.onrender.com/ws/location/");
     
     ws.onopen = () => {
       console.log("WebSocket conectado");
@@ -125,7 +125,7 @@ export default function App() {
 
   // Fetch initial route data
   useEffect(() => {
-    fetch("https://tracker-backendgun.onrender.com/api/location/")
+    fetch("ws://tracker-backendgun.onrender.com/ws/location/")
       .then((res) => res.json())
       .then((data) => setRoute(data.route || []))
       .catch(console.error);
