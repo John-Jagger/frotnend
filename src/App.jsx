@@ -78,29 +78,39 @@ export default function App() {
 
   // WebSocket connection
   useEffect(() => {
+    // ✅ Fetch the last known driver location from the API when the app loads
+    fetch("https://tracker-backendgun.onrender.com/api/location/")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.latitude && data.longitude) {
+          console.log("📍 Fetched Last Known Location:", data);
+          setPosition([data.latitude, data.longitude]);  // ✅ Set initial position
+        }
+      })
+      .catch(console.error);
+  
+    // ✅ Connect to WebSocket for real-time updates
     const ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
     
     ws.onopen = () => {
-      console.log("WebSocket conectado");
+      console.log("✅ WebSocket Connected");
       if (mode === "driver") startLocationSharing();
     };
-    
+  
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (mode === "user") {
-        setPosition([data.latitude, data.longitude]);
-      }
+      console.log("📡 WebSocket Update:", data);
+      setPosition([data.latitude, data.longitude]);  // ✅ Update position in real-time
     };
-    
-    ws.onerror = (error) => console.error("Error WebSocket:", error);
-    ws.onclose = () => console.log("WebSocket disconected");
-    
+  
+    ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
+    ws.onclose = () => console.log("🔌 WebSocket Disconnected");
+  
     socketRef.current = ws;
-
-    return () => {
-      ws.close();
-    };
+  
+    return () => ws.close();
   }, [mode]);
+  
 
   // Geolocation logic
   useEffect(() => {
@@ -155,15 +165,6 @@ export default function App() {
     };
   }, [mode]);
 
-  // Fetch initial route data
-  useEffect(() => {
-    fetch("/route.json")
-      .then((res) => res.json())
-      .then((data) => setRoute(data.route || []))
-      .catch(console.error);
-
-    setTimes(waypoints.map(() => Math.floor(Math.random() * 10) + 1));
-  }, []);
 
   return (
     <div className="app-container">
