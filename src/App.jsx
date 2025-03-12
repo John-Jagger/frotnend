@@ -50,16 +50,21 @@ export default function App() {
         (pos) => {
           const { latitude, longitude } = pos.coords;
           setPosition([latitude, longitude]);
-
+  
           if (socketRef.current?.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({
+            const data = JSON.stringify({
               latitude,
               longitude,
               mode: "driver"
-            }));
+            });
+  
+            console.log("📡 Sending Location Data:", data); // ✅ Log data before sending
+            socketRef.current.send(data);
+          } else {
+            console.warn("⚠️ WebSocket not open, cannot send data");
           }
         },
-        (error) => console.error(" Error in geolocation:", error),
+        (error) => console.error("❌ Error in geolocation:", error),
         {
           enableHighAccuracy: true,
           maximumAge: 0,
@@ -67,7 +72,7 @@ export default function App() {
         }
       );
     } else {
-      console.error("Geolocation is not supported by this browser.");
+      console.error("❌ Geolocation is not supported by this browser.");
     }
   };
 
