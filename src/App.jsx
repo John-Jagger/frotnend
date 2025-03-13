@@ -166,61 +166,7 @@ useEffect(() => {
 
   return () => ws.close();
 }, [mode]);
-  
 
-  // Geolocation logic
-  // useEffect(() => {
-  //   const options = {
-  //     enableHighAccuracy: true,
-  //     maximumAge: 0,
-  //     timeout: 5000
-  //   };
-
-  //   if (mode === "driver") {
-  //     // Actualización en tiempo real para driver
-  //     watchIdRef.current = navigator.geolocation.watchPosition(
-  //       (pos) => {
-  //         const { latitude, longitude } = pos.coords;
-  //         setPosition([latitude, longitude]);
-          
-  //         if (socketRef.current?.readyState === WebSocket.OPEN) {
-  //           socketRef.current.send(JSON.stringify({
-  //             latitude,
-  //             longitude,
-  //             mode: "driver"
-  //           }));
-  //         }
-  //       },
-  //       (error) => console.error("Error geolocation:", error),
-  //       options
-  //     );
-  //   } else {
-  //     // Actualización cada 15 segundos para usuario
-  //     const getLocation = () => {
-  //       navigator.geolocation.getCurrentPosition(
-  //         (pos) => {
-  //           const { latitude, longitude } = pos.coords;
-  //           setPosition([latitude, longitude]);
-  //         },
-  //         (error) => console.error("Error obteniendo ubicación:", error),
-  //         options
-  //       );
-  //     };
-
-  //     getLocation();
-  //     intervalRef.current = setInterval(getLocation, 15000);
-  //   }
-
-  //   return () => {
-  //     if (watchIdRef.current) {
-  //       navigator.geolocation.clearWatch(watchIdRef.current);
-  //     }
-  //     if (intervalRef.current) {
-  //       clearInterval(intervalRef.current);
-  //     }
-  //   };
-  // }, [mode]);
-  // Geolocation logic (Only for drivers)
 useEffect(() => {
   if (mode === "driver") {
     // ✅ Only request location when switching to Driver Mode
