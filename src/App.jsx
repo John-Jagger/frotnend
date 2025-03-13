@@ -123,9 +123,11 @@ useEffect(() => {
       if (data.latitude && data.longitude) {
         console.log("📍 Fetched Last Known Location:", data);
         setPosition([data.latitude, data.longitude]);  // ✅ Set initial position
+      } else {
+        console.warn("⚠️ No location data found:", data);
       }
     })
-    .catch(console.error);
+    .catch((error) => console.error("❌ Error fetching last location:", error));
 
   // ✅ Connect to WebSocket for real-time updates
   const ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
