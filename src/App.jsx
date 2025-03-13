@@ -53,7 +53,7 @@ export default function App() {
   
           if (socketRef.current?.readyState === WebSocket.OPEN) {
             const data = JSON.stringify({
-              user_id: "unkown",
+              user_id: "unknown",
               latitude,
               longitude,
               mode: "driver"
@@ -138,7 +138,7 @@ useEffect(() => {
       startLocationSharing();
       isDriverActive = true;
     }
-    ws.send(JSON.stringify({ user_id: "default_user" }));
+    ws.send(JSON.stringify({ user_id: "unknown" }));
   };
 
   ws.onmessage = (event) => {
