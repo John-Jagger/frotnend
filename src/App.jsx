@@ -77,44 +77,11 @@ export default function App() {
     }
   };
 
-  // WebSocket connection
-  // useEffect(() => {
-  //   // ✅ Fetch the last known driver location from the API when the app loads
-  //   fetch("https://tracker-backendgun.onrender.com/api/location/")
-  //     .then((res) => res.json())
-  //     .then((data) => {
-  //       if (data.latitude && data.longitude) {
-  //         console.log("📍 Fetched Last Known Location:", data);
-  //         setPosition([data.latitude, data.longitude]);  // ✅ Set initial position
-  //       }
-  //     })
-  //     .catch(console.error);
-  
-  //   // ✅ Connect to WebSocket for real-time updates
-  //   const ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
-    
-  //   ws.onopen = () => {
-  //     console.log("✅ WebSocket Connected");
-  //     if (mode === "driver") startLocationSharing();
-  //   };
-  
-  //   ws.onmessage = (event) => {
-  //     const data = JSON.parse(event.data);
-  //     console.log("📡 WebSocket Update:", data);
-  //     setPosition([data.latitude, data.longitude]);  // ✅ Update position in real-time
-  //   };
-  
-  //   ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
-  //   ws.onclose = () => console.log("🔌 WebSocket Disconnected");
-  
-  //   socketRef.current = ws;
-  
-  //   return () => ws.close();
-  // }, [mode]);
-
-  // WebSocket connection
 useEffect(() => {
   let isDriverActive = false; // Track if the driver is currently online
+  let ws; // WebSocket reference
+  let reconnectInterval = 5000; // Reconnect delay (5 seconds)
+  let shouldReconnect = true; // Prevents infinite reconnection attempts
 
   // ✅ Fetch the last known driver location from the API when the app loads
   fetch("https://tracker-backendgun.onrender.com/api/location/")
@@ -129,43 +96,59 @@ useEffect(() => {
     })
     .catch((error) => console.error("❌ Error fetching last location:", error));
 
-  // ✅ Connect to WebSocket for real-time updates
-  const ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
+  // ✅ Function to connect WebSocket with auto-reconnect
+  const connectWebSocket = () => {
+    console.log("🔄 Attempting WebSocket connection...");
+    ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
 
-  ws.onopen = () => {
-    console.log("✅ WebSocket Connected");
-    if (mode === "driver") {
-      startLocationSharing();
-      isDriverActive = true;
-    }
-    ws.send(JSON.stringify({ user_id: "unknown" }));
+    ws.onopen = () => {
+      console.log("✅ WebSocket Connected");
+      ws.send(JSON.stringify({ user_id: "unknown" })); // Ensure user_id is sent
+
+      if (mode === "driver") {
+        startLocationSharing();
+        isDriverActive = true;
+      }
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("📡 WebSocket Update:", data);
+
+      if (data.latitude && data.longitude) {
+        setPosition([data.latitude, data.longitude]);  // ✅ Update position in real-time
+        isDriverActive = true; // Mark that a driver is active
+      }
+    };
+
+    ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
+
+    ws.onclose = () => {
+      console.warn("⚠️ WebSocket Disconnected");
+
+      // ✅ If no active driver, keep the last known position instead of resetting
+      if (!isDriverActive) {
+        console.log("🛑 No driver detected, keeping last known position.");
+      }
+
+      // ✅ Automatically attempt reconnection after a delay
+      if (shouldReconnect) {
+        console.log(`🔄 Reconnecting WebSocket in ${reconnectInterval / 1000} seconds...`);
+        setTimeout(connectWebSocket, reconnectInterval);
+      }
+    };
+
+    socketRef.current = ws;
   };
 
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log("📡 WebSocket Update:", data);
+  connectWebSocket(); // Establish initial connection
 
-    if (data.latitude && data.longitude) {
-      setPosition([data.latitude, data.longitude]);  // ✅ Update position in real-time
-      isDriverActive = true; // Mark that a driver is active
-    }
+  return () => {
+    shouldReconnect = false; // Stop reconnect attempts when unmounting
+    if (ws) ws.close();
   };
-
-  ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
-
-  ws.onclose = () => {
-    console.log("🔌 WebSocket Disconnected");
-
-    // ✅ If no active driver, keep the last known position instead of resetting
-    if (!isDriverActive) {
-      console.log("🛑 No driver detected, keeping last known position.");
-    }
-  };
-
-  socketRef.current = ws;
-
-  return () => ws.close();
 }, [mode]);
+
 
 useEffect(() => {
   if (mode === "driver") {
