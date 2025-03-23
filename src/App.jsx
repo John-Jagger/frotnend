@@ -117,7 +117,7 @@ useEffect(() => {
 
       if (data.latitude && data.longitude) {
         setPosition([data.latitude, data.longitude]);  // ✅ Update position in real-time
-        isDriverActive = true; // Mark that a driver is active
+        isDriverActive = true; // Mark that a driver is activ\
       }
     };
 
