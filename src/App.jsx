@@ -181,7 +181,7 @@ useEffect(() => {
       console.error("❌ Geolocation is not supported by this browser.");
     }
   } else {
-    // ✅ Stop tracking when switching to User Mode
+    // ✅ Stop tracking when switching to User Mode.
     if (watchIdRef.current) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
