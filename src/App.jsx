@@ -59,13 +59,13 @@ export default function App() {
               mode: "driver"
             });
   
-            console.log("📡 Sending Location Data:", data); // ✅ Log data before sending
+            console.log("📡 Sending Location Data:", data); // Log data before sending
             socketRef.current.send(data);
           } else {
-            console.warn("⚠️ WebSocket not open, cannot send data");
+            console.warn("WebSocket not open, cannot send data");
           }
         },
-        (error) => console.error("❌ Error in geolocation:", error),
+        (error) => console.error("Error in geolocation:", error),
         {
           enableHighAccuracy: true,
           maximumAge: 0,
@@ -73,7 +73,7 @@ export default function App() {
         }
       );
     } else {
-      console.error("❌ Geolocation is not supported by this browser.");
+      console.error("Geolocation is not supported by this browser.");
     }
   };
 
@@ -89,12 +89,12 @@ useEffect(() => {
     .then((data) => {
       if (data.latitude && data.longitude) {
         console.log("📍 Fetched Last Known Location:", data);
-        setPosition([data.latitude, data.longitude]);  // ✅ Set initial position
+        setPosition([data.latitude, data.longitude]);  // Set initial position
       } else {
         console.warn("⚠️ No location data found:", data);
       }
     })
-    .catch((error) => console.error("❌ Error fetching last location:", error));
+    .catch((error) => console.error("Error fetching last location:", error));
 
   // ✅ Function to connect WebSocket with auto-reconnect
   const connectWebSocket = () => {
@@ -116,19 +116,19 @@ useEffect(() => {
       console.log("📡 WebSocket Update:", data);
 
       if (data.latitude && data.longitude) {
-        setPosition([data.latitude, data.longitude]);  // ✅ Update position in real-time
+        setPosition([data.latitude, data.longitude]);  // Update position in real-time
         isDriverActive = true; // Mark that a driver is activ\
       }
     };
 
-    ws.onerror = (error) => console.error("❌ WebSocket Error:", error);
+    ws.onerror = (error) => console.error("WebSocket Error:", error);
 
     ws.onclose = () => {
       console.warn("⚠️ WebSocket Disconnected");
 
       // ✅ If no active driver, keep the last known position instead of resetting
       if (!isDriverActive) {
-        console.log("🛑 No driver detected, keeping last known position.");
+        console.log("No driver detected, keeping last known position.");
       }
 
       // ✅ Automatically attempt reconnection after a delay
@@ -157,7 +157,7 @@ useEffect(() => {
       watchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          setPosition([latitude, longitude]); // ✅ Update map position
+          setPosition([latitude, longitude]); // Update map position
 
           if (socketRef.current?.readyState === WebSocket.OPEN) {
             socketRef.current.send(
@@ -170,7 +170,7 @@ useEffect(() => {
             );
           }
         },
-        (error) => console.error("❌ Geolocation Error:", error),
+        (error) => console.error("Geolocation Error:", error),
         {
           enableHighAccuracy: true,
           maximumAge: 0,
@@ -178,7 +178,7 @@ useEffect(() => {
         }
       );
     } else {
-      console.error("❌ Geolocation is not supported by this browser.");
+      console.error("Geolocation is not supported by this browser.");
     }
   } else {
     // ✅ Stop tracking when switching to User Mode.
