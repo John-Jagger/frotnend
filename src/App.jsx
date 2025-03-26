@@ -6,6 +6,7 @@ import L from "leaflet";
 
 const DEFAULT_CENTER = [39.747389, -105.224338];
 
+// Configuración de rutas
 const ROUTE_CONFIG = {
   silver: {
     waypoints: [
@@ -43,6 +44,7 @@ const ROUTE_CONFIG = {
   }
 };
 
+// Iconos
 const createIcon = (url, size, anchor) => new L.Icon({
   iconUrl: url,
   iconSize: size,
@@ -60,105 +62,156 @@ export default function App() {
   const [position, setPosition] = useState(DEFAULT_CENTER);
   const [mode, setMode] = useState("user");
   const socketRef = useRef(null);
-  const watchIdRef = useRef(null);
 
+  // Obtener configuración de ruta actual
   const currentRoute = ROUTE_CONFIG[selectedRoute];
 
+  // WebSocket connection
+  useEffect(() => {
+    // Conexión WebSocket a la API de ORECART
+    const socketUrl = "wss://tracker-backendgun.onrender.com/ws/location/";
+    const ws = new WebSocket(socketUrl);
+    
+    ws.onopen = () => {
+      console.log("WebSocket conectado");
+      ws.send(JSON.stringify({ user_id: "unknown" })); // Iniciar la conexión WebSocket
+      if (mode === "driver") startLocationSharing();
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (mode === "user") {
+        setPosition([data.latitude, data.longitude]);
+      }
+    };
+
+    ws.onerror = (error) => console.error("Error WebSocket:", error);
+    ws.onclose = () => console.log("WebSocket desconectado");
+
+    socketRef.current = ws;
+
+    return () => ws.close();
+  }, [mode]);
+
+  // Función para enviar ubicación del conductor
+  const updateLocation = () => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const { latitude, longitude } = pos.coords;
+      setPosition([latitude, longitude]);
+      if (socketRef.current?.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({
+          user_id: "unknown", // id de usuario
+          latitude,
+          longitude,
+          mode: "driver"
+        }));
+      }
+    });
+  };
+
+  // Obtener los últimos datos de la ubicación al cargar la app
   useEffect(() => {
     fetch("https://tracker-backendgun.onrender.com/api/location/")
       .then((res) => res.json())
       .then((data) => {
-        if (data.latitude && data.longitude) {
-          setPosition([data.latitude, data.longitude]);
-        }
+        setPosition([data.latitude, data.longitude]);
       })
-      .catch((error) => console.error("Error fetching location:", error));
+      .catch((error) => console.error("Error al obtener ubicación inicial:", error));
   }, []);
 
+  // Obtener datos de la ruta
   useEffect(() => {
-    let ws;
-    let shouldReconnect = true;
-
-    const connectWebSocket = () => {
-      ws = new WebSocket("wss://tracker-backendgun.onrender.com/ws/location/");
-      
-      ws.onopen = () => {
-        console.log("WebSocket conectado");
-        if (mode === "driver") startLocationSharing();
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (mode === "user") {
-          setPosition([data.latitude, data.longitude]);
-        }
-      };
-
-      ws.onerror = (error) => console.error("Error WebSocket:", error);
-      ws.onclose = () => {
-        console.log("WebSocket desconectado");
-        if (shouldReconnect) {
-          setTimeout(connectWebSocket, 5000);
-        }
-      };
-
-      socketRef.current = ws;
-    };
-
-    connectWebSocket();
-
-    return () => {
-      shouldReconnect = false;
-      ws.close();
-    };
-  }, [mode]);
-
-  const startLocationSharing = () => {
-    if (navigator.geolocation) {
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          setPosition([latitude, longitude]);
-
-          if (socketRef.current?.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({
-              user_id: "unknown",
-              latitude,
-              longitude,
-              mode: "driver"
-            }));
-          }
-        },
-        (error) => console.error("Error in geolocation:", error),
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
-        }
-      );
-    }
-  };
+    fetch(`/${selectedRoute}-route.json`)
+      .then((res) => res.json())
+      .then((data) => {
+        setRoute(data.route || currentRoute.waypoints);
+        setTimes((data.route || currentRoute.waypoints).map(() => Math.floor(Math.random() * 10) + 1));
+      })
+      .catch((error) => {
+        console.error("Error cargando la ruta:", error);
+        setRoute(currentRoute.waypoints);
+        setTimes(currentRoute.waypoints.map(() => Math.floor(Math.random() * 10) + 1));
+      });
+  }, [selectedRoute]);
 
   return (
     <div className="app-container">
+      <div className="top-bar">
+        <span className="title">ORECART</span>
+        <div className="controls">
+          <select 
+            value={selectedRoute}
+            onChange={(e) => setSelectedRoute(e.target.value)}
+            className="route-select"
+          >
+            {Object.keys(ROUTE_CONFIG).map(route => (
+              <option key={route} value={route}>
+                {ROUTE_CONFIG[route].name} Route
+              </option>
+            ))}
+          </select>
+
+          <button
+            className={`mode-toggle ${mode === 'driver' ? 'driver' : ''}`}
+            onClick={() => {
+              if (mode === "driver") {
+                setMode("user");
+              } else {
+                const password = prompt("Password:");
+                if (password === "1234") setMode("driver");
+              }
+            }}
+          >
+            {mode === "driver" ? "DRIVER MODE" : "USER MODE"}
+          </button>
+
+          {mode === "driver" && (
+            <button 
+              className="update-button"
+              onClick={updateLocation}
+            >
+              Update Location
+            </button>
+          )}
+        </div>
+      </div>
+
       <MapContainer center={DEFAULT_CENTER} zoom={14} className="map">
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; OpenStreetMap contributors'
         />
 
-        <Polyline positions={currentRoute.waypoints} color={currentRoute.color} weight={5} />
+        {route.length > 0 && (
+          <Polyline
+            key={selectedRoute} // Forzamos re-render al cambiar la ruta
+            positions={route}
+            color={currentRoute.color} // Aplicamos el color correcto
+            weight={5}
+            interactive={false}
+          />
+        )}
 
         {currentRoute.waypoints.map((point, index) => (
-          <Marker key={index} position={point} icon={stopIcon}>
-            <Popup>{currentRoute.name} - {times[index] || Math.floor(Math.random() * 10) + 1} mins</Popup>
-          </Marker>
+          <div key={index}>
+            <CircleMarker
+              center={point}
+              radius={7}
+              fillColor={currentRoute.color}
+              color="#f8f9fa08"
+              weight={15}
+              fillOpacity={1}
+            />
+            <Marker position={point} icon={stopIcon}>
+              <Popup>{currentRoute.name} - {times[index]} mins</Popup>
+            </Marker>
+          </div>
         ))}
 
         <Marker position={position} icon={mode === "driver" ? driverIcon : cartIcon}>
           <Popup>{mode === "driver" ? "Driver Position" : "Cart Location"}</Popup>
         </Marker>
-        
+
         <ZoomControl position="bottomright" />
       </MapContainer>
     </div>
