@@ -109,7 +109,7 @@ export default function App() {
     });
   };
 
-  // Obtener los últimos datos de la ubicación al cargar la app
+  // Obtener los últimos datos de la ubicación al cargar la app.
   useEffect(() => {
     fetch("https://tracker-backendgun.onrender.com/api/location/")
       .then((res) => res.json())
