@@ -41,7 +41,34 @@ const ROUTE_CONFIG = {
     ],
     color: "#FFD700",
     name: "Gold"
+  },
+  other: {
+    waypoints: [
+      [39.745, -105.215],
+      [39.746, -105.220],
+      [39.747, -105.225],
+      [39.748, -105.230],
+      [39.745, -105.215],
+    ],
+    color: "#FF6347",
+    name: "Other"
   }
+};
+
+// Configuración de conductores
+const DRIVERS_CONFIG = {
+  silver: [
+    { id: 1, name: "Silver Driver 1", position: DEFAULT_CENTER },
+    { id: 2, name: "Silver Driver 2", position: DEFAULT_CENTER }
+  ],
+  gold: [
+    { id: 3, name: "Gold Driver 1", position: DEFAULT_CENTER },
+    { id: 4, name: "Gold Driver 2", position: DEFAULT_CENTER }
+  ],
+  other: [
+    { id: 5, name: "Other Driver 1", position: DEFAULT_CENTER },
+    { id: 6, name: "Other Driver 2", position: DEFAULT_CENTER }
+  ]
 };
 
 // Iconos
@@ -59,8 +86,9 @@ export default function App() {
   const [route, setRoute] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState("silver");
   const [times, setTimes] = useState([]);
-  const [position, setPosition] = useState(DEFAULT_CENTER);
   const [mode, setMode] = useState("user");
+  const [driverId, setDriverId] = useState(null);
+  const [drivers, setDrivers] = useState(DRIVERS_CONFIG);
   const socketRef = useRef(null);
 
   // Obtener configuración de ruta actual
@@ -68,20 +96,29 @@ export default function App() {
 
   // WebSocket connection
   useEffect(() => {
-    // Conexión WebSocket a la API de ORECART
-    const socketUrl = "wss://tracker-backendgun.onrender.com/ws/location/";
+    const socketUrl = mode === 'driver' 
+      ? `wss://tracker-backendgun.onrender.com/ws/location/driver/${selectedRoute}/${driverId}/`
+      : `wss://tracker-backendgun.onrender.com/ws/location/user/${selectedRoute}/`;
+    
     const ws = new WebSocket(socketUrl);
     
     ws.onopen = () => {
       console.log("WebSocket conectado");
-      ws.send(JSON.stringify({ user_id: "unknown" })); // Iniciar la conexión WebSocket
       if (mode === "driver") startLocationSharing();
     };
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
       if (mode === "user") {
-        setPosition([data.latitude, data.longitude]);
+        // Actualizar posición del conductor correspondiente
+        setDrivers(prev => ({
+          ...prev,
+          [data.route_id]: prev[data.route_id].map(driver => 
+            driver.id === parseInt(data.driver_id) 
+              ? {...driver, position: [data.latitude, data.longitude]} 
+              : driver
+          )
+        }));
       }
     };
 
@@ -91,33 +128,53 @@ export default function App() {
     socketRef.current = ws;
 
     return () => ws.close();
-  }, [mode]);
+  }, [mode, selectedRoute, driverId]);
 
   // Función para enviar ubicación del conductor
   const updateLocation = () => {
     navigator.geolocation.getCurrentPosition((pos) => {
       const { latitude, longitude } = pos.coords;
-      setPosition([latitude, longitude]);
+      // Actualizar posición local del conductor
+      setDrivers(prev => ({
+        ...prev,
+        [selectedRoute]: prev[selectedRoute].map(driver => 
+          driver.id === driverId 
+            ? {...driver, position: [latitude, longitude]} 
+            : driver
+        )
+      }));
+      
       if (socketRef.current?.readyState === WebSocket.OPEN) {
         socketRef.current.send(JSON.stringify({
-          user_id: "unknown", // id de usuario
           latitude,
           longitude,
-          mode: "driver"
+          driver_id: driverId,
+          route_id: selectedRoute
         }));
       }
     });
   };
 
-  // Obtener los últimos datos de la ubicación al cargar la app
+  // Obtener los últimos datos de ubicación al cargar la app
   useEffect(() => {
-    fetch("https://tracker-backendgun.onrender.com/api/location/")
+    fetch(`https://tracker-backendgun.onrender.com/api/location/${selectedRoute}/`)
       .then((res) => res.json())
       .then((data) => {
-        setPosition([data.latitude, data.longitude]);
+        // Actualizar posiciones de los conductores según la respuesta
+        const updatedDrivers = {...drivers};
+        data.forEach(location => {
+          const route = location.route_id;
+          const driverId = location.driver_id;
+          updatedDrivers[route] = updatedDrivers[route].map(driver => 
+            driver.id === driverId 
+              ? {...driver, position: [location.latitude, location.longitude]} 
+              : driver
+          );
+        });
+        setDrivers(updatedDrivers);
       })
       .catch((error) => console.error("Error al obtener ubicación inicial:", error));
-  }, []);
+  }, [selectedRoute]);
 
   // Obtener datos de la ruta
   useEffect(() => {
@@ -133,6 +190,31 @@ export default function App() {
         setTimes(currentRoute.waypoints.map(() => Math.floor(Math.random() * 10) + 1));
       });
   }, [selectedRoute]);
+
+  // Función para iniciar el modo conductor
+  const startDriverMode = () => {
+    const password = prompt("Password:");
+    if (password === "1234") {
+      const driverNum = prompt("Número de conductor (1-6):");
+      const num = parseInt(driverNum);
+      if (num >= 1 && num <= 6) {
+        setDriverId(num);
+        setMode("driver");
+        
+        // Determinar la ruta basada en el ID del conductor
+        let route;
+        if (num <= 2) route = "silver";
+        else if (num <= 4) route = "gold";
+        else route = "other";
+        
+        setSelectedRoute(route);
+      } else {
+        alert("Número de conductor inválido");
+      }
+    } else {
+      alert("Contraseña incorrecta");
+    }
+  };
 
   return (
     <div className="app-container">
@@ -156,13 +238,13 @@ export default function App() {
             onClick={() => {
               if (mode === "driver") {
                 setMode("user");
+                setDriverId(null);
               } else {
-                const password = prompt("Password:");
-                if (password === "1234") setMode("driver");
+                startDriverMode();
               }
             }}
           >
-            {mode === "driver" ? "DRIVER MODE" : "USER MODE"}
+            {mode === "driver" ? `DRIVER MODE (${driverId})` : "USER MODE"}
           </button>
 
           {mode === "driver" && (
@@ -184,9 +266,9 @@ export default function App() {
 
         {route.length > 0 && (
           <Polyline
-            key={selectedRoute} // Forzamos re-render al cambiar la ruta
+            key={selectedRoute}
             positions={route}
-            color={currentRoute.color} // Aplicamos el color correcto
+            color={currentRoute.color}
             weight={5}
             interactive={false}
           />
@@ -208,9 +290,20 @@ export default function App() {
           </div>
         ))}
 
-        <Marker position={position} icon={mode === "driver" ? driverIcon : cartIcon}>
-          <Popup>{mode === "driver" ? "Driver Position" : "Cart Location"}</Popup>
-        </Marker>
+        {/* Mostrar todos los conductores de la ruta seleccionada */}
+        {drivers[selectedRoute].map(driver => (
+          <Marker 
+            key={driver.id} 
+            position={driver.position} 
+            icon={mode === "driver" && driverId === driver.id ? driverIcon : cartIcon}
+          >
+            <Popup>
+              {mode === "driver" && driverId === driver.id 
+                ? `Your Position (Driver ${driver.id})` 
+                : `${driver.name} (${currentRoute.name})`}
+            </Popup>
+          </Marker>
+        ))}
 
         <ZoomControl position="bottomright" />
       </MapContainer>
